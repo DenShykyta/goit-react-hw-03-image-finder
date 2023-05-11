@@ -5,66 +5,64 @@ import ImageGallery from './ImageGallery';
 import Loader from './Loader';
 import Modal from './Modal';
 import Button from './Button';
+import fetchImages from '../services';
 
 export default class App extends Component {
   state = {
     searchText: '',
     collection: [],
+    page: 1,
     loader: false,
     showModal: false,
+    imgModal: '',
+    tags: '',
+    error: null,
+    total: 0,
   };
 
-  componentDidUpdate(prevProps, prevState) {
-    if (prevState.searchText !== this.state.searchText) {
-      this.setState({ loader: true, page: 1 });
-
-      fetch(
-        `https://pixabay.com/api/?key=36114618-4ab1640e640d5e2e224b92420&q=${this.state.searchText}&image_type=photo`
-      )
-        .then(response => {
-          if (response.ok) {
-            return response.json();
-          }
-          return Promise.reject(new Error('Error!!!'));
-        })
-        .then(({ hits }) => {
-          if (hits.length < 1) {
-            toast.info('No images! Type a new search input!', {
-              theme: 'colored',
-            });
-          }
-          this.setState({ collection: hits });
-        })
-        .catch(error => this.setState({ error: error }))
-        .finally(() => this.setState({ loader: false }));
+  async componentDidUpdate(prevProps, prevState) {
+    if (
+      prevState.searchText !== this.state.searchText ||
+      prevState.page !== this.state.page
+    ) {
+      try {
+        this.setState({ loader: true });
+        const images = await fetchImages(
+          this.state.searchText,
+          this.state.page
+        );
+        const { hits, totalHits } = images;
+        if (hits.length === 0) {
+          return toast.info('No images! Type a new search input!', {
+            theme: 'colored',
+          });
+        }
+        this.setState(prevState => ({
+          collection: [...prevState.collection, ...hits],
+          loader: false,
+          total: totalHits,
+        }));
+      } catch (error) {
+        this.setState({ error });
+      }
     }
   }
-  onModal = imgLarge => {
-    this.setState({ showModal: true, imgModal: imgLarge });
+  openModal = (imgLarge, tags) => {
+    this.setState({ showModal: true, imgModal: imgLarge, tags });
   };
-  toggleModal = () => {
-    this.setState({ showModal: !this.state.showModal });
+  closeModal = () => {
+    this.setState({ showModal: false, imgModal: '', tags: '' });
   };
   handleSearchSubmit = searchText => {
-    this.setState({ searchText });
+    this.setState({ searchText, collection: [], page: 1 });
   };
   handleLoadMoreClick = () => {
     this.setState({ loader: true });
-    let page = this.state.page + 1;
-    fetch(
-      `https://pixabay.com/api/?key=36114618-4ab1640e640d5e2e224b92420&q=${this.state.searchText}&image_type=photo&page=${page}`
-    )
-      .then(response => response.json())
-      .then(collection =>
-        this.setState(prevState => ({
-          collection: [...prevState.collection, ...collection.hits],
-          page: prevState.page + 1,
-        }))
-      )
-      .finally(() => this.setState({ loader: false }));
+    this.setState(prevState => ({ page: prevState.page + 1 }));
   };
 
   render() {
+    const pagesNumber = this.state.total / this.state.collection.length;
     return (
       <div
         style={{
@@ -76,18 +74,23 @@ export default class App extends Component {
       >
         <Searchbar onSubmit={this.handleSearchSubmit} />
         <ToastContainer autoClose={2000} />
-
         <ImageGallery
           collection={this.state.collection}
-          onImgClick={this.onModal}
+          onImgClick={this.openModal}
         />
         {this.state.loader && <Loader />}
         {this.state.showModal && (
-          <Modal image={this.state.imgModal} onClose={this.toggleModal} />
+          <Modal
+            image={this.state.imgModal}
+            tags={this.state.tags}
+            onClose={this.closeModal}
+          />
         )}
-        {this.state.collection.length > 0 && (
-          <Button onClick={this.handleLoadMoreClick} />
-        )}
+        {pagesNumber > 1 &&
+          !this.state.loader &&
+          this.state.collection !== 0 && (
+            <Button onClick={this.handleLoadMoreClick} />
+          )}
       </div>
     );
   }
