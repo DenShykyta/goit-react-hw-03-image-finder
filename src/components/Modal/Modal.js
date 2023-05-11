@@ -30,7 +30,7 @@ export default class Modal extends Component {
     return createPortal(
       <div className={css.overlay} onClick={this.handleBackdpropClick}>
         <div className={css.modal}>
-          <img src={this.props.image} alt="" />
+          <img src={this.props.image} alt={this.props.tags} />
         </div>
       </div>,
       modalRoot
@@ -40,4 +40,6 @@ export default class Modal extends Component {
 
 Modal.propTypes = {
   onClose: PropTypes.func.isRequired,
+  image: PropTypes.string.isRequired,
+  tags: PropTypes.string.isRequired,
 };

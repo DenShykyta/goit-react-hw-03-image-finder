@@ -21,6 +21,7 @@ const ImageGallery = ({ collection, onImgClick }) => {
 export default ImageGallery;
 
 ImageGallery.propTypes = {
+  onImgClick: PropTypes.func.isRequired,
   collection: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.number.isRequired,
